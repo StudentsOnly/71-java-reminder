@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
@@ -23,8 +24,8 @@ public class Main {
         String input = scanner.nextLine().trim().toLowerCase();
         switch (input.charAt(0)) {
           case 'a' -> addReminder(scanner);
-//          case 'v' -> viewAll();
-//          case 'd' -> deleteReminder(scanner);
+          case 'v' -> viewAll();
+          case 'd' -> deleteReminder(scanner);
           case 'e' -> {
             System.out.println("Exiting program ...");
             isRunning = false;
@@ -40,6 +41,39 @@ public class Main {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+  }
+
+  private static void deleteReminder(Scanner scanner) {
+    System.out.println("Enter the id to cancel the reminder:");
+    long id;
+    try {
+      id = scanner.nextLong();
+      scanner.nextLine();
+    } catch (NumberFormatException e) {
+      System.out.println("Invalid number format for id.");
+      scanner.nextLine();
+      return;
+    }
+    Reminder reminderToRemove = null;
+    for (var r : reminders) {
+      if (r.id() == id) {
+        r.future().cancel(false);
+        reminderToRemove = r;
+        break;
+      }
+    }
+    reminders.remove(reminderToRemove);
+    System.out.println(reminderToRemove + " is canceled.");
+  }
+
+  private static void viewAll() {
+    StringBuilder result = new StringBuilder("""
+      -------------------------
+      All Reminders
+      -------------------------
+      """);
+    reminders.forEach(result::append);
+    System.out.println(result + "\n");
   }
 
   private static void addReminder(Scanner scanner) {
@@ -60,28 +94,22 @@ public class Main {
         return;
       }
     }
-    long id;
-    String title;
-    String description;
-    int start;
-    int interval;
-    TimeUnit timeUnit;
 
     try {
-      id = Long.parseLong(lines[0]);
-      title = lines[1];
-      description = lines[2];
-      start = Integer.parseInt(lines[3]);
-      interval = Integer.parseInt(lines[4]);
-      timeUnit = getTimeUnit(lines[5]);
+      long id = Long.parseLong(lines[0]);
+      String title = lines[1];
+      String description = lines[2];
+      int start = Integer.parseInt(lines[3]);
+      int interval = Integer.parseInt(lines[4]);
+      TimeUnit timeUnit = getTimeUnit(lines[5]);
+
+      var future = executor.scheduleAtFixedRate(
+        () -> System.out.println(title + ":\n\n" + description + "\n"), start, interval, timeUnit);
+      reminders.add(new Reminder(id, title, description, start, interval, timeUnit, future));
     } catch (NumberFormatException e) {
       System.out.println("Illegal number format.");
       return;
     }
-
-    reminders.add(new Reminder(id, title, description, start, interval, timeUnit));
-    executor.scheduleAtFixedRate(
-      () -> System.out.println(title + ":\n\n" + description + "\n"), start, interval, timeUnit);
   }
 
   private static TimeUnit getTimeUnit(String line) {
@@ -104,7 +132,8 @@ public class Main {
       (d)elete
       (e)xit
       
-      Enter operation:\s""";
+      Enter operation:
+      """;
     System.out.print(menu);
   }
 }
