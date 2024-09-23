@@ -34,12 +34,15 @@ public class Main {
         }
         System.out.println();
       }
+    } finally {
       executor.shutdown();
-      if(!executor.awaitTermination(5, TimeUnit.MINUTES)) {
-        executor.shutdownNow();
+      try {
+        if(!executor.awaitTermination(5, TimeUnit.MINUTES)) {
+          executor.shutdownNow();
+        }
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
       }
-    } catch (InterruptedException e) {
-      e.printStackTrace();
     }
   }
 
@@ -108,7 +111,6 @@ public class Main {
       reminders.add(new Reminder(id, title, description, start, interval, timeUnit, future));
     } catch (NumberFormatException e) {
       System.out.println("Illegal number format.");
-      return;
     }
   }
 
